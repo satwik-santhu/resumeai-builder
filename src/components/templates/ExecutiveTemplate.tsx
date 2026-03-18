@@ -24,10 +24,7 @@ export default function ExecutiveTemplate({ resume }: TemplateProps) {
           {/* Name */}
           <div className="mb-6 pb-4 border-b border-amber-600">
             <h1 className="text-2xl font-extrabold leading-tight">
-              {resume.personalInfo.fullName?.split(' ').slice(0, -1).join(' ') || 'First Name'}
-            </h1>
-            <h1 className="text-2xl font-extrabold text-amber-300">
-              {resume.personalInfo.fullName?.split(' ').slice(-1)[0] || 'Last Name'}
+              {resume.personalInfo.fullName || 'Your Name'}
             </h1>
           </div>
 
@@ -35,12 +32,28 @@ export default function ExecutiveTemplate({ resume }: TemplateProps) {
           <div className="mb-5">
             <SideTitle title="Contact" />
             <div className="space-y-1.5 text-xs text-amber-100">
-              {resume.personalInfo.email && <p className="break-words">✉ {resume.personalInfo.email}</p>}
+              {resume.personalInfo.email && (
+                <p className="break-words">
+                  <a data-pdf-link href={`mailto:${resume.personalInfo.email}`} className="hover:underline">✉ {resume.personalInfo.email}</a>
+                </p>
+              )}
               {resume.personalInfo.phone && <p>📞 {resume.personalInfo.phone}</p>}
               {resume.personalInfo.location && <p>📍 {resume.personalInfo.location}</p>}
-              {resume.personalInfo.linkedIn && <p className="break-all">🔗 {resume.personalInfo.linkedIn}</p>}
-              {resume.personalInfo.github && <p className="break-all">⌨ {resume.personalInfo.github}</p>}
-              {resume.personalInfo.portfolio && <p className="break-all">🌐 {resume.personalInfo.portfolio}</p>}
+              {resume.personalInfo.linkedIn && (
+                <p className="break-all">
+                  <a data-pdf-link href={resume.personalInfo.linkedIn.startsWith('http') ? resume.personalInfo.linkedIn : `https://${resume.personalInfo.linkedIn}`} className="hover:underline">🔗 {resume.personalInfo.linkedIn}</a>
+                </p>
+              )}
+              {resume.personalInfo.github && (
+                <p className="break-all">
+                  <a data-pdf-link href={resume.personalInfo.github.startsWith('http') ? resume.personalInfo.github : `https://${resume.personalInfo.github}`} className="hover:underline">⌨ {resume.personalInfo.github}</a>
+                </p>
+              )}
+              {resume.personalInfo.portfolio && (
+                <p className="break-all">
+                  <a data-pdf-link href={resume.personalInfo.portfolio.startsWith('http') ? resume.personalInfo.portfolio : `https://${resume.personalInfo.portfolio}`} className="hover:underline">🌐 {resume.personalInfo.portfolio}</a>
+                </p>
+              )}
             </div>
           </div>
 
@@ -110,7 +123,9 @@ export default function ExecutiveTemplate({ resume }: TemplateProps) {
                 <div key={proj.id} className="mb-3">
                   <div className="flex justify-between items-baseline">
                     <h3 className="text-sm font-bold text-gray-900">{proj.name}</h3>
-                    {proj.link && <span className="text-xs text-amber-700">{proj.link}</span>}
+                    {proj.link && (
+                      <a data-pdf-link href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`} className="text-xs text-amber-700 hover:underline">{proj.link}</a>
+                    )}
                   </div>
                   {proj.technologies && (
                     <p className="text-xs text-amber-700 font-semibold mb-0.5">{proj.technologies}</p>

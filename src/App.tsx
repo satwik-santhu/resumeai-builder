@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { Resume } from './types/resume';
 import { supabase, isSupabaseConfigured } from './services/supabase';
@@ -18,6 +18,11 @@ import PaymentModal from './components/PaymentModal';
 import AuthModal from './components/AuthModal';
 
 type View = 'landing' | 'dashboard' | 'editor' | 'template' | 'preview';
+
+interface HistoryState {
+  view: View;
+  resumeId: string | null;
+}
 
 const createBlankResume = (): Resume => ({
   id: crypto.randomUUID(),
@@ -45,22 +50,95 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ─── Data Loading ──────────────────────────────────────────────────────────
+  const loadData = useCallback(async (): Promise<Resume[]> => {
+    const [fetchedResumes, premiumStatus] = await Promise.all([fetchResumes(), fetchIsPremium()]);
+    setResumes(fetchedResumes);
+    setIsPremium(premiumStatus);
+    return fetchedResumes;
+  }, []);
+
+  // ─── Browser History Navigation ────────────────────────────────────────────
+  /**
+   * Push (or replace) a view onto the browser history stack.
+   * This is the ONLY way we change the view — so every transition creates
+   * a history entry that the Back / Forward buttons can traverse.
+   */
+  const navigate = useCallback(
+    (view: View, resume?: Resume | null, replace = false) => {
+      const resumeId = resume !== undefined ? (resume?.id ?? null) : null;
+      const state: HistoryState = { view, resumeId };
+      const hash = `#${view}`;
+
+      if (replace) {
+        window.history.replaceState(state, '', hash);
+      } else {
+        window.history.pushState(state, '', hash);
+      }
+
+      setCurrentView(view);
+      if (resume !== undefined) {
+        setCurrentResume(resume);
+      }
+    },
+    []
+  );
+
+  // Restore state when the user presses Back / Forward
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as HistoryState | null;
+      if (!state) {
+        setCurrentView('landing');
+        setCurrentResume(null);
+        return;
+      }
+      setCurrentView(state.view);
+      if (state.resumeId) {
+        // Look up the resume in our current list
+        setResumes(prev => {
+          const found = prev.find(r => r.id === state.resumeId) ?? null;
+          setCurrentResume(found);
+          return prev;
+        });
+      } else {
+        setCurrentResume(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // ─── Auth listener ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false);
       loadData();
+      // Seed the initial history entry
+      window.history.replaceState({ view: 'landing', resumeId: null } as HistoryState, '', '#landing');
       return;
     }
 
-    // Get initial session
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       setUser(data.session?.user ?? null);
       loadData();
       setLoading(false);
+      // Seed the initial history entry
+      window.history.replaceState({ view: 'landing', resumeId: null } as HistoryState, '', '#landing');
+
+      // If the user arrived via a Supabase email-confirmation link, open the
+      // login modal automatically so they can sign in right away.
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+      const type = params.get('type');
+      if ((type === 'signup' || type === 'recovery') && !data.session) {
+        // Clean the URL so the tokens aren't visible
+        window.history.replaceState({ view: 'landing', resumeId: null } as HistoryState, '', '#landing');
+        setShowAuthModal(true);
+      }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, session: Session | null) => {
         setUser(session?.user ?? null);
@@ -69,24 +147,20 @@ function App() {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const loadData = async () => {
-    const [resumes, premium] = await Promise.all([fetchResumes(), fetchIsPremium()]);
-    setResumes(resumes);
-    setIsPremium(premium);
-  };
+  }, [loadData]);
 
   // ─── Resume actions ────────────────────────────────────────────────────────
   const createNewResume = () => {
-    setCurrentResume(createBlankResume());
-    setCurrentView('template');
+    const blank = createBlankResume();
+    setCurrentResume(blank);
+    navigate('template', blank);
   };
 
   const handleTemplateSelect = (templateId: string) => {
     if (currentResume) {
-      setCurrentResume({ ...currentResume, templateId, isPremium: templateId === 'executive' });
-      setCurrentView('editor');
+      const updated = { ...currentResume, templateId, isPremium: templateId === 'executive' };
+      setCurrentResume(updated);
+      navigate('editor', updated);
     }
   };
 
@@ -94,18 +168,17 @@ function App() {
     if (!currentResume) return;
     await saveResume({ ...currentResume, updatedAt: new Date().toISOString() });
     await loadData();
-    setCurrentView('dashboard');
-    setCurrentResume(null);
+    navigate('dashboard', null);
   };
 
   const handleEditResume = (id: string) => {
-    const resume = resumes.find(r => r.id === id);
-    if (resume) { setCurrentResume(resume); setCurrentView('editor'); }
+    const resume = resumes.find(r => r.id === id) ?? null;
+    if (resume) navigate('editor', resume);
   };
 
   const handlePreviewResume = (id: string) => {
-    const resume = resumes.find(r => r.id === id);
-    if (resume) { setCurrentResume(resume); setCurrentView('preview'); }
+    const resume = resumes.find(r => r.id === id) ?? null;
+    if (resume) navigate('preview', resume);
   };
 
   const handleDeleteResume = async (id: string) => {
@@ -127,12 +200,12 @@ function App() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    await loadData(); // reload guest resumes
+    await loadData();
+    navigate('dashboard', null, true);
   };
 
   const handleCancel = () => {
-    setCurrentView('dashboard');
-    setCurrentResume(null);
+    navigate('dashboard', null);
   };
 
   if (loading) {
@@ -149,7 +222,7 @@ function App() {
   return (
     <div className="min-h-screen">
       {currentView === 'landing' && (
-        <LandingPage onGetStarted={() => setCurrentView('dashboard')} />
+        <LandingPage onGetStarted={() => navigate('dashboard')} />
       )}
 
       {currentView === 'dashboard' && (
@@ -198,8 +271,8 @@ function App() {
       {currentView === 'preview' && currentResume && (
         <PreviewPage
           resume={currentResume}
-          onBack={() => setCurrentView('dashboard')}
-          onEdit={() => setCurrentView('editor')}
+          onBack={() => navigate('dashboard', null)}
+          onEdit={() => navigate('editor', currentResume)}
         />
       )}
 

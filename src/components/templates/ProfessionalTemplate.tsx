@@ -16,12 +16,20 @@ export default function ProfessionalTemplate({ resume }: TemplateProps) {
           {resume.personalInfo.fullName || 'Your Name'}
         </h1>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-2">
-          {resume.personalInfo.email && <span>✉ {resume.personalInfo.email}</span>}
+          {resume.personalInfo.email && (
+            <a data-pdf-link href={`mailto:${resume.personalInfo.email}`} className="hover:underline">✉ {resume.personalInfo.email}</a>
+          )}
           {resume.personalInfo.phone && <span>📞 {resume.personalInfo.phone}</span>}
           {resume.personalInfo.location && <span>📍 {resume.personalInfo.location}</span>}
-          {resume.personalInfo.linkedIn && <span>🔗 {resume.personalInfo.linkedIn}</span>}
-          {resume.personalInfo.github && <span>⌨ {resume.personalInfo.github}</span>}
-          {resume.personalInfo.portfolio && <span>🌐 {resume.personalInfo.portfolio}</span>}
+          {resume.personalInfo.linkedIn && (
+            <a data-pdf-link href={resume.personalInfo.linkedIn.startsWith('http') ? resume.personalInfo.linkedIn : `https://${resume.personalInfo.linkedIn}`} className="hover:underline">🔗 {resume.personalInfo.linkedIn}</a>
+          )}
+          {resume.personalInfo.github && (
+            <a data-pdf-link href={resume.personalInfo.github.startsWith('http') ? resume.personalInfo.github : `https://${resume.personalInfo.github}`} className="hover:underline">⌨ {resume.personalInfo.github}</a>
+          )}
+          {resume.personalInfo.portfolio && (
+            <a data-pdf-link href={resume.personalInfo.portfolio.startsWith('http') ? resume.personalInfo.portfolio : `https://${resume.personalInfo.portfolio}`} className="hover:underline">🌐 {resume.personalInfo.portfolio}</a>
+          )}
         </div>
       </div>
 
@@ -75,7 +83,9 @@ export default function ProfessionalTemplate({ resume }: TemplateProps) {
             <div key={proj.id} className="mb-3">
               <div className="flex justify-between items-start">
                 <h3 className="text-base font-bold text-gray-900">{proj.name}</h3>
-                {proj.link && <span className="text-xs text-blue-600">{proj.link}</span>}
+                {proj.link && (
+                  <a data-pdf-link href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`} className="text-xs text-blue-600 hover:underline">{proj.link}</a>
+                )}
               </div>
               {proj.technologies && (
                 <p className="text-xs text-gray-500 font-medium mb-1">Tech: {proj.technologies}</p>

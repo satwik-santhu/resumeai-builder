@@ -16,6 +16,7 @@ type Section = 'personal' | 'summary' | 'experience' | 'education' | 'skills' | 
 export default function ResumeForm({ resume, onChange, onSave, onCancel }: ResumeFormProps) {
   const [aiLoading, setAiLoading] = useState<string | false>(false);
   const [activeSection, setActiveSection] = useState<Section>('personal');
+  const [skillInput, setSkillInput] = useState('');
 
   const updateField = (field: keyof Resume, value: any) => {
     onChange({ ...resume, [field]: value });
@@ -332,24 +333,44 @@ export default function ResumeForm({ resume, onChange, onSave, onCancel }: Resum
                 {aiLoading === 'skills' ? 'Thinking…' : 'AI Suggest'}
               </button>
             </div>
-            <input
-              type="text"
-              value={resume.skills.join(', ')}
-              onChange={e => updateField('skills', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-              className={inputCls}
-              placeholder="React, Node.js, TypeScript, Python, AWS, Git…"
-            />
+
+            {/* Tag display */}
             {resume.skills.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2">
                 {resume.skills.map((skill, i) => (
                   <span key={i} className="flex items-center gap-1 px-2.5 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold">
                     {skill}
-                    <button onClick={() => updateField('skills', resume.skills.filter((_, j) => j !== i))} className="text-violet-400 hover:text-violet-700">×</button>
+                    <button
+                      onClick={() => updateField('skills', resume.skills.filter((_, j) => j !== i))}
+                      className="text-violet-400 hover:text-violet-700 leading-none"
+                    >×</button>
                   </span>
                 ))}
               </div>
             )}
-            <p className="text-xs text-gray-400">Type skills separated by commas, or use AI to get suggestions based on your role.</p>
+
+            {/* Enter-to-add input */}
+            <input
+              type="text"
+              value={skillInput}
+              onChange={e => setSkillInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  const trimmed = skillInput.trim().replace(/,$/, '');
+                  if (trimmed && !resume.skills.includes(trimmed)) {
+                    updateField('skills', [...resume.skills, trimmed]);
+                  }
+                  setSkillInput('');
+                } else if (e.key === 'Backspace' && skillInput === '' && resume.skills.length > 0) {
+                  // Remove last tag on backspace when input is empty
+                  updateField('skills', resume.skills.slice(0, -1));
+                }
+              }}
+              className={inputCls}
+              placeholder="Type a skill and press Enter…"
+            />
+            <p className="text-xs text-gray-400">Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">Enter</kbd> after each skill to add it as a tag. Backspace removes the last tag.</p>
           </div>
         )}
 

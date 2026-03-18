@@ -14,6 +14,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,13 +22,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   if (!isOpen) return null;
 
   const handleClose = () => {
-    setEmail(''); setPassword(''); setError(''); setSuccess('');
+    setEmail(''); setPassword(''); setConfirmPassword(''); setError(''); setSuccess('');
     onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(''); setSuccess('');
+
+    if (mode === 'signup' && password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -141,6 +148,24 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             </div>
           </div>
 
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Confirm Password</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-3 text-gray-500" />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full pl-9 pr-3 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                  placeholder="Re-enter your password"
+                />
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -154,7 +179,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         <p className="text-center text-sm text-gray-500 mt-5">
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
+            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setConfirmPassword(''); }}
             className="text-violet-400 hover:text-violet-300 font-semibold transition"
           >
             {mode === 'login' ? 'Sign Up' : 'Sign In'}

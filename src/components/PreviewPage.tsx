@@ -1,4 +1,5 @@
-import { Download, ArrowLeft, Edit2 } from 'lucide-react';
+import { useState } from 'react';
+import { Download, ArrowLeft, Edit2, Loader2 } from 'lucide-react';
 import { Resume } from '../types/resume';
 import ResumePreview from './ResumePreview';
 import { downloadResumePDF } from '../utils/pdfGenerator';
@@ -10,8 +11,12 @@ interface PreviewPageProps {
 }
 
 export default function PreviewPage({ resume, onBack, onEdit }: PreviewPageProps) {
-  const handleDownload = () => {
-    downloadResumePDF(resume.name);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    await downloadResumePDF(resume.name);
+    setDownloading(false);
   };
 
   return (
@@ -41,10 +46,10 @@ export default function PreviewPage({ resume, onBack, onEdit }: PreviewPageProps
             </button>
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:from-violet-500 hover:to-indigo-500 transition shadow-lg shadow-violet-500/30 text-sm font-bold"
+              disabled={downloading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:from-violet-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-lg shadow-violet-500/30 text-sm font-bold"
             >
-              <Download size={16} />
-              Download PDF
+              {downloading ? <><Loader2 size={16} className="animate-spin" /> Generating…</> : <><Download size={16} /> Download PDF</>}
             </button>
           </div>
         </div>
